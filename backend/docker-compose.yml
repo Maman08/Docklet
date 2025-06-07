@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - MONGODB_URI=mongodb://mongo:27017/docklet
+      - REDIS_URL=redis://redis:6379
+      - UPLOAD_DIR=/app/uploads
+      - OUTPUT_DIR=/app/outputs
+      - DOCKER_NETWORK=docklet_task-network
+      - RUNNING_IN_DOCKER=true
+      - HOST_UPLOADS_PATH=${PWD}/uploads
+      - HOST_OUTPUTS_PATH=${PWD}/outputs
+    volumes:
+      - ./uploads:/app/uploads:rw
+      - ./outputs:/app/outputs:rw
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - task-network
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:5.0
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - task-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - task-network
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  task-network:
+    name: docklet_task-network
+    driver: bridge

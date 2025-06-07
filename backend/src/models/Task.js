@@ -14,7 +14,7 @@ const taskSchema=new mongoose.Schema({
     type:{
         type:String,
         required:true,
-        enum:['image-converter','video-trim']
+        enum:['image-convert','video-trim']
     },
     status:{
         type:String,

@@ -1,0 +1,52 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "build-images": "bash scripts/build-docker-images.sh",
+    "cleanup": "bash scripts/cleanup.sh",
+    "setup": "npm run build-images && npm run init-db",
+    "init-db": "node scripts/init-database.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "health": "curl http://localhost:3000/api/health"
+  },
+  "keywords": [
+    "docker",
+    "task-execution",
+    "file-processing",
+    "api"
+  ],
+  "author": "Mritunjay",
+  "license": "ISC",
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dockerode": "^4.0.7",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "mime-types": "^3.0.1",
+    "mongoose": "^8.15.1",
+    "multer": "^2.0.1",
+    "redis": "^5.5.6",
+    "uuid": "^11.1.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.1"
+  }
+}
