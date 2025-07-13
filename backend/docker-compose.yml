@@ -1,12 +1,13 @@
-version: '3.8'
 services:
   app:
     build: .
     ports:
       - "${PORT:-3000}:3000"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=${NODE_ENV:-development}
-      - MONGODB_URI=mongodb://mongo:27017/docklet
+      - MONGO_URI=${MONGO_URI}
       - REDIS_URL=redis://redis:6379
       - UPLOAD_DIR=/app/uploads
       - OUTPUT_DIR=/app/outputs
@@ -14,9 +15,11 @@ services:
       - RUNNING_IN_DOCKER=true
       - HOST_UPLOADS_PATH=${PWD}/uploads
       - HOST_OUTPUTS_PATH=${PWD}/outputs
+      - HOST_CODE_PATH=${PWD}/code 
     volumes:
       - ./uploads:/app/uploads:rw
       - ./outputs:/app/outputs:rw
+      - ./code:/app/code:rw
       - /var/run/docker.sock:/var/run/docker.sock:rw
     depends_on:
       - mongo
@@ -47,5 +50,5 @@ volumes:
 
 networks:
   task-network:
-    name: docklet_task-network
+    name: task-network
     driver: bridge

@@ -4,9 +4,11 @@ const fs = require('fs').promises;
 
 class DockerService {
   constructor() {
+    // This is a Map that keeps track of the containers currently being managed by this service instance key is the containerId and the value is the dockerode container object
     this.runningContainers = new Map();
   }
-
+  
+  // If the container runs for longer than 300000 (5min) the operation will be aborted
   async runContainer(config, timeout = 300000) {
     const containerId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     let container = null;
@@ -20,7 +22,7 @@ class DockerService {
         Env: config.environment || [],
         HostConfig: {
           Binds: config.volumes || [],
-          AutoRemove: false, // Changed to false to prevent premature removal
+          AutoRemove: false, // to prevent premature removal
           NetworkMode: process.env.DOCKER_NETWORK || 'docklet_task-network'
         },
         AttachStdout: true,
@@ -39,7 +41,8 @@ class DockerService {
       });
 
       const waitPromise = container.wait();
-      
+      // Agar container 5 minute se pehle finish ho gaya, toh waitPromise race jeet jaayega aur code aage badhega.
+      // ya agar container 5 minute tak chalta raha, toh timeoutPromise race jeet jaayega (reject hokar) aur ek "Timeout Error" aa jayega
       const result = await Promise.race([waitPromise, timeoutPromise]);
       
       let logsString = '';

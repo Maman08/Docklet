@@ -31,6 +31,14 @@ class queueService{
             if(!this.redis){
                 await this.initialize();
             }
+            //BLMOVE atomically moves an element from a source list to a destination list, with blocking support
+            //When we talk about "blocking support" in the context of Redis commands like BLMOVE, it means that the client (the program or application sending the command) will pause its execution and wait if the requested operation cannot be completed immediately
+            //Yeh ensure karta hai ki ek hi task ek baar pick ho aur koi race condition na ho
+            //BLMOVE ek atomic Redis command hai:
+            // LEFT (from) queue se ek task uthao
+            // RIGHT (to) processing list me daal do
+            // agar queue empty hai, 1 second tak wait karo
+            // Ye background runner (taskRunner.js) isse repeatedly call karta hai
             const taskData = await this.redis.BLMOVE(QUEUE_KEY,PROCESSING_KEY, 'LEFT', 'RIGHT', 1);
             if(!taskData){
                 return null;

@@ -1,11 +1,17 @@
 const Joi = require('joi');
 const logger = require('../utils/logger');
+const { FORBIDDEN_CODE_PATTERNS } = require('../utils/constants');
 
 const taskSchema = Joi.object({
-  type: Joi.string().valid('image-convert', 'video-trim').required(),
+  type: Joi.string().valid(
+    'image-convert', 
+    'video-trim',
+    'pdf-extract',
+    'csv-analyze'
+  ).required(),
   parameters: Joi.alternatives().try(
-    Joi.string(), 
-    Joi.object() 
+    Joi.string(),
+    Joi.object()
   ).required()
 });
 
@@ -21,6 +27,26 @@ const videoTrimParams = Joi.object({
   endTime: Joi.string().pattern(/^\d{2}:\d{2}:\d{2}$/).optional(),
   duration: Joi.string().pattern(/^\d{2}:\d{2}:\d{2}$/).optional()
 }).or('endTime', 'duration');
+
+
+const pdfExtractParams = Joi.object({
+  extractImages: Joi.boolean().default(false),
+  extractTables: Joi.boolean().default(false),
+  pageRange: Joi.object({
+    start: Joi.number().min(1).optional(),
+    end: Joi.number().min(1).optional()
+  }).optional(),
+  outputFormat: Joi.string().valid('text', 'json', 'markdown').default('text')
+});
+
+const csvAnalyzeParams = Joi.object({
+  delimiter: Joi.string().length(1).default(','),
+  hasHeader: Joi.boolean().default(true),
+  analysisType: Joi.string().valid('basic', 'detailed', 'statistical').default('basic'),
+  columns: Joi.array().items(Joi.string()).optional(),
+  generateCharts: Joi.boolean().default(false)
+});
+
 
 const validateTask = async (req, res, next) => {
   try {
@@ -46,19 +72,24 @@ const validateTask = async (req, res, next) => {
       case 'video-trim':
         paramValidation = videoTrimParams.validate(parameters);
         break;
+      case 'pdf-extract':
+        paramValidation = pdfExtractParams.validate(parameters);
+        break;
+      case 'csv-analyze':
+        paramValidation = csvAnalyzeParams.validate(parameters);
+        break;
       default:
         return res.status(400).json({ error: 'Unknown task type' });
     }
 
     if (paramValidation.error) {
-      return res.status(400).json({ 
-        error: `Parameter validation failed: ${paramValidation.error.details[0].message}` 
+      return res.status(400).json({
+        error: `Parameter validation failed: ${paramValidation.error.details[0].message}`
       });
     }
 
     req.body.type = taskValue.type;
     req.body.parameters = paramValidation.value;
-
     next();
   } catch (error) {
     logger.error('Validation error:', error);
@@ -83,4 +114,7 @@ const validatePagination = (req, res, next) => {
   next();
 };
 
-module.exports = { validateTask, validatePagination };
+module.exports = { 
+  validateTask, 
+  validatePagination 
+};

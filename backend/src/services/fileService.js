@@ -23,20 +23,16 @@ class FileService {
 
   async downloadFile(res, filePath, filename) {
     try {
-      // Check if file exists
       await fs.access(filePath);
       
-      // Get file stats
       const stats = await fs.stat(filePath);
       const mimeType = mime.lookup(filePath) || 'application/octet-stream';
       
-      // Set headers
       res.setHeader('Content-Type', mimeType);
       res.setHeader('Content-Length', stats.size);
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Cache-Control', 'no-cache');
       
-      // Stream file
       const fileStream = require('fs').createReadStream(filePath);
       fileStream.pipe(res);
       
@@ -63,7 +59,7 @@ class FileService {
     }
   }
 
-  async cleanupOldFiles(maxAge = 24 * 60 * 60 * 1000) { // 24 hours
+  async cleanupOldFiles(maxAge = 24 * 60 * 60 * 1000) { 
     try {
       const directories = [this.uploadDir, this.outputDir];
       const cutoff = Date.now() - maxAge;

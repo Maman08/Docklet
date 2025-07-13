@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
-        trim: true
+        trim: true //agar kisi ne galti se space daal diya start/end me, to wo remove ho jaayega
     },
     email: {
         type: String,
@@ -44,6 +44,8 @@ userSchema.pre('save',async function(next){
         next(err);
     }
 })
+
+//ab ye function hm api me call kr skte hain ===> basically it adds a method in User object
 userSchema.methods.comparePassword = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
