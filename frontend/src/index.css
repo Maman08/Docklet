@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+    html {
+      font-size: 22px; /* default is 16px */
+    }
+
+body {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  /* Apply Monotype Corsiva to headings - but don't override inline styles */
+  h1:not([style*="fontFamily"]), h2:not([style*="fontFamily"]), h3:not([style*="fontFamily"]), h4:not([style*="fontFamily"]), h5:not([style*="fontFamily"]), h6:not([style*="fontFamily"]) {
+    font-style: italic;
+    font-family: 'Monotype Corsiva', cursive;
+  }
+  
+  /* Style for primary text content with Inter */
+  p, span, div {
+    font-style: italic;
+    font-family: 'Monotype Corsiva', cursive;
+  }
+  
+  /* Ensure buttons use Inter font */
+  button {
+    font-style: italic;
+    font-family: 'Monotype Corsiva', cursive;
+  }
