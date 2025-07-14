@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, FileText, Video, Image, Code, Zap, Shield } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
-
+import logo from '../../logo.png'
 export const Landing: React.FC = () => {
   const features = [
     {
@@ -45,16 +45,19 @@ export const Landing: React.FC = () => {
       <nav className="bg-gray-900/80 backdrop-blur-xl border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center space-x-2"
-            >
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-800 to-purple-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">D</span>
-              </div>
-              <span className="text-xl font-bold text-white">Docklet</span>
-            </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center space-x-2"
+          >
+            <img
+              src={logo}
+              alt="Docklet Logo"
+              className="w-8 h-8 rounded-md object-cover"
+            />
+            <span className="text-xl font-bold text-white">Docklet</span>
+          </motion.div>
+          
 
             <motion.div
               initial={{ opacity: 0, x: 20 }}
