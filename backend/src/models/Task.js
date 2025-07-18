@@ -20,7 +20,11 @@ const TaskSchema = new mongoose.Schema({
     },
     outputFile: {
         filename: String,
-        path: String
+        originalName: String,
+        path: String,
+        s3Key: String,
+        size:Number,
+        mimetype:String
     },
     
     parameters: { type: mongoose.Schema.Types.Mixed, default: {} },

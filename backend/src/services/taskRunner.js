@@ -18,13 +18,6 @@ class TaskRunner {
     }
 
     getHostPath(directory) {
-        // console.log('---------- getHostPath CALLED -----------');
-        // console.log('Directory:', directory);
-        // console.log('RUNNING_IN_DOCKER:', process.env.RUNNING_IN_DOCKER);
-        // console.log('NODE_ENV:', process.env.NODE_ENV);
-        // console.log('DOCKER_ENV:', process.env.DOCKER_ENV);
-        // console.log('HOST_UPLOADS_PATH:', process.env.HOST_UPLOADS_PATH);
-    
         if (process.env.RUNNING_IN_DOCKER) {
             if (directory === 'uploads' && process.env.HOST_UPLOADS_PATH) {
                 console.log('Returning: ENV HOST_UPLOADS_PATH');
@@ -279,3 +272,26 @@ async processTask(task) {
 }
 
 module.exports = new TaskRunner();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
