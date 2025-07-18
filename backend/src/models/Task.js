@@ -26,6 +26,16 @@ const TaskSchema = new mongoose.Schema({
         size:Number,
         mimetype:String
     },
+    deploymentInfo:{
+        githubUrl:String,
+        publicUrl:String,
+        containerId:String,
+        port:Number,
+        isRunning:Boolean,
+        buildLogs:String,
+        imageId:String,
+        scheduledStopTime:Date
+    },
     
     parameters: { type: mongoose.Schema.Types.Mixed, default: {} },
     error: String,
