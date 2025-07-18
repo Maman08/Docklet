@@ -21,7 +21,7 @@ export interface RegisterCredentials {
   password: string;
 }
 
-export type TaskType = 
+export type TaskType =
   | 'image-convert'
   | 'video-trim'
   | 'pdf-extract'
@@ -32,12 +32,41 @@ export type TaskType =
 export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export interface TaskParameters {
-  outputFormat?: string;
-  startTime?: number;
-  endTime?: number;
+  // Image conversion parameters
+  format?: string;       
+  quality?: number;
+  width?: number;
+  height?: number;
+
+  // PDF extraction parameters
+  extractImages?: boolean;
+  extractTables?: boolean;
+  outputFormat?: string;  // PDF uses 'outputFormat'
+  pageRange?: {
+    start?: number;
+    end?: number;
+  };
+  
+  // Video trimming parameters
+  startTime?: string; 
+  endTime?: string;   
+  duration?: string;  
+  
+  
+  
+  // CSV analysis parameters
+  delimiter?: string;
+  hasHeader?: boolean;
+  analysisType?: string;
+  columns?: string[];
+  generateCharts?: boolean;
+  
+  // Code execution parameters
   language?: string;
   timeout?: number;
   memoryLimit?: string;
+  
+  // Deployment parameters
   appType?: string;
   expirationHours?: number;
   port?: number;
@@ -53,10 +82,30 @@ export interface Task {
   parameters: TaskParameters;
   progress: number;
   createdAt: string;
+  startedAt?: string;        
   completedAt?: string;
+  processingTime?: number;  
   downloadUrl?: string;
   deploymentUrl?: string;
   error?: string;
+  output?: string;           
+  
+  inputFile?: {
+    filename: string;
+    originalName: string;
+    path: string;
+    size: number;
+    mimetype: string;
+  };
+  
+  outputFile?: {
+    filename: string;
+    originalName: string;
+    path: string;
+    s3Key?: string;
+    size: number;
+    mimetype: string;
+  };
 }
 
 export interface TaskSubmission {

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { LogOut, User, Settings } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import logo from "../../../logo.png"
 
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -12,15 +13,17 @@ export const Header: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center space-x-2"
-          >
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">D</span>
-            </div>
-            <span className="text-xl font-bold text-white">Docklet</span>
-          </motion.div>
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="w-16 h-16 bg-black  flex items-center justify-center mx-auto mb-4 p-0 rounded-full"
+            >
+              <img 
+                src={logo} 
+                alt="Docklet Logo" 
+                className="w-full h-full object-contain rounded-full"
+              />
+            </motion.div>
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">

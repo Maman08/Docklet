@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Card } from '../common/Card';
+import logo from "../../../logo.png"
 
 export const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -17,12 +18,10 @@ export const LoginForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
     const success = await login({ email, password });
     if (success) {
       navigate('/dashboard');
     }
-    
     setLoading(false);
   };
 
@@ -35,14 +34,18 @@ export const LoginForm: React.FC = () => {
         className="w-full max-w-md"
       >
         <Card className="p-8">
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 rounded-full">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto mb-4"
+              className="w-16 h-16 bg-black  flex items-center justify-center mx-auto mb-4 p-0 rounded-full"
             >
-              <span className="text-white font-bold text-2xl">D</span>
+              <img 
+                src={logo} 
+                alt="Docklet Logo" 
+                className="w-full h-full object-contain rounded-full"
+              />
             </motion.div>
             <h1 className="text-2xl font-bold text-white mb-2">Welcome Back</h1>
             <p className="text-gray-400">Sign in to access your Docklet dashboard</p>

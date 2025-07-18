@@ -13,7 +13,7 @@ export const Landing: React.FC = () => {
       description: 'Convert between formats, resize, and optimize images with professional quality.'
     },
     {
-      icon: <Video className="text-purple-400" size={24} />,
+      icon: <Video className="text-black-400" size={24} />,
       title: 'Video Editing',
       description: 'Trim, cut, and process videos with precision timing controls.'
     },
@@ -85,7 +85,7 @@ export const Landing: React.FC = () => {
             className="text-5xl md:text-6xl font-bold text-white mb-6"
           >
             Process Files with
-            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent block">
+            <span className="bg-gradient-to-r from-blue-400 to-black-400 bg-clip-text text-transparent block">
               Docker Power
             </span>
           </motion.h1>

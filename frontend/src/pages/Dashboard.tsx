@@ -14,6 +14,7 @@ import { Card } from '../components/common/Card';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { CODE_LANGUAGES } from '../utils/constants';
 import toast from 'react-hot-toast';
+
 const baseClasses = `
   relative 
   bg-blue/10 
@@ -27,6 +28,7 @@ const baseClasses = `
   before:z-[-1] 
   overflow-hidden
 `;
+
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [selectedType, setSelectedType] = useState<TaskType | null>(null);
@@ -66,6 +68,7 @@ export const Dashboard: React.FC = () => {
       const userTasks = await taskService.getUserTasks(user.id);
       setTasks(userTasks);
     } catch (error) {
+      console.error('Failed to load tasks:', error);
       toast.error('Failed to load tasks');
     } finally {
       setLoading(false);
@@ -86,7 +89,7 @@ export const Dashboard: React.FC = () => {
         parameters
       });
       
-      toast.success('Task submitted successfully!');
+      toast.success(`Task submitted successfully! ${result.estimatedTime ? `Estimated time: ${result.estimatedTime}s` : ''}`);
       setSelectedType(null);
       setSelectedFile(null);
       setParameters({});
@@ -94,8 +97,10 @@ export const Dashboard: React.FC = () => {
       // Poll for task updates
       pollTaskStatus(result.taskId);
       
-    } catch (error) {
-      toast.error('Failed to submit task');
+    } catch (error: any) {
+      console.error('Task submission failed:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to submit task';
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -114,7 +119,7 @@ export const Dashboard: React.FC = () => {
     try {
       // Create a virtual file for code execution
       const codeBlob = new Blob([code], { type: 'text/plain' });
-      const codeFile = new File([codeBlob], `script.${CODE_LANGUAGES[language as keyof typeof CODE_LANGUAGES].extension}`, { type: 'text/plain' });
+      const codeFile = new File([codeBlob], `script.${CODE_LANGUAGES[language as keyof typeof CODE_LANGUAGES]?.extension || 'txt'}`, { type: 'text/plain' });
 
       const result = await taskService.submitTask({
         type: 'code-execute',
@@ -129,8 +134,10 @@ export const Dashboard: React.FC = () => {
       // Poll for execution results
       pollCodeExecution(result.taskId);
       
-    } catch (error) {
-      setCodeError('Failed to execute code');
+    } catch (error: any) {
+      console.error('Code execution failed:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to execute code';
+      setCodeError(errorMessage);
       setExecuting(false);
     }
   };
@@ -154,13 +161,19 @@ export const Dashboard: React.FC = () => {
           if (task.status === 'completed') {
             toast.success('Task completed successfully!');
           } else {
-            toast.error('Task failed');
+            toast.error(`Task failed: ${task.error || 'Unknown error'}`);
           }
         }
       } catch (error) {
+        console.error('Error polling task status:', error);
         clearInterval(interval);
       }
     }, 2000);
+
+    // Clear interval after 5 minutes to prevent infinite polling
+    setTimeout(() => {
+      clearInterval(interval);
+    }, 300000);
   };
 
   const pollCodeExecution = async (taskId: string) => {
@@ -171,35 +184,39 @@ export const Dashboard: React.FC = () => {
         if (task.status === 'completed') {
           clearInterval(interval);
           setExecuting(false);
-          // Mock output for demo
-          setCodeOutput('Code executed successfully!\nHello, World!');
+          // For code execution, show output from task results
+          setCodeOutput(task.output || 'Code executed successfully!');
         } else if (task.status === 'failed') {
           clearInterval(interval);
           setExecuting(false);
           setCodeError(task.error || 'Execution failed');
         }
       } catch (error) {
+        console.error('Error polling code execution:', error);
         clearInterval(interval);
         setExecuting(false);
         setCodeError('Failed to get execution results');
       }
     }, 1000);
+
+    // Clear interval after 2 minutes for code execution
+    setTimeout(() => {
+      clearInterval(interval);
+      if (executing) {
+        setExecuting(false);
+        setCodeError('Execution timeout');
+      }
+    }, 120000);
   };
 
   const handleDownload = async (taskId: string) => {
     try {
-      const blob = await taskService.downloadFile(taskId);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = 'processed-file';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      toast.success('File downloaded successfully!');
-    } catch (error) {
-      toast.error('Failed to download file');
+      await taskService.downloadFile(taskId);
+      toast.success('File download started!');
+    } catch (error: any) {
+      console.error('Download failed:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to download file';
+      toast.error(errorMessage);
     }
   };
 
@@ -216,7 +233,7 @@ export const Dashboard: React.FC = () => {
           {/* Welcome Section */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold text-white">
-              Welcome to <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Docklet</span>
+              Welcome to <span className="bg-gradient-to-r from-blue-400 to-black-400 bg-clip-text text-transparent">Docklet</span>
             </h1>
             <p className="text-gray-400 text-lg">Process files with Docker power</p>
           </div>
@@ -277,8 +294,8 @@ export const Dashboard: React.FC = () => {
                     <div className="text-sm text-gray-400">
                       {selectedType ? (
                         <>
-                          <p>✓ Task type selected</p>
-                          {selectedFile && <p>✓ File uploaded</p>}
+                          <p>✓ Task type selected: {selectedType}</p>
+                          {selectedFile && <p>✓ File uploaded: {selectedFile.name}</p>}
                         </>
                       ) : (
                         <p>Select a task type to continue</p>
@@ -312,6 +329,10 @@ export const Dashboard: React.FC = () => {
                       <span className="text-gray-400">Processing:</span>
                       <span className="text-blue-400">{tasks.filter(t => t.status === 'processing').length}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Failed:</span>
+                      <span className="text-red-400">{tasks.filter(t => t.status === 'failed').length}</span>
+                    </div>
                   </div>
                 </Card>
               </div>
@@ -337,8 +358,8 @@ export const Dashboard: React.FC = () => {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-semibold text-white">My Tasks</h2>
-                <Button onClick={loadUserTasks} variant="secondary">
-                  Refresh
+                <Button onClick={loadUserTasks} variant="secondary" disabled={loading}>
+                  {loading ? 'Loading...' : 'Refresh'}
                 </Button>
               </div>
               

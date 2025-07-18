@@ -7,6 +7,7 @@ import { formatFileSize } from '../../utils/validation';
 import { Card } from '../common/Card';
 import { ProgressBar } from '../common/ProgressBar';
 import { Button } from '../common/Button';
+import { iconMap } from '../../utils/iconMapping';
 
 interface TaskCardProps {
   task: Task;
@@ -15,7 +16,8 @@ interface TaskCardProps {
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onDownload }) => {
   const taskConfig = TASK_TYPES[task.type];
-  
+  const IconComponent = iconMap[taskConfig.icon];
+
   const getStatusIcon = () => {
     switch (task.status) {
       case 'completed':
@@ -51,7 +53,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onDownload }) => {
       <Card className="space-y-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
-            <div className="text-2xl">{taskConfig.icon}</div>
+            <div className="text-blue-400">
+              <IconComponent size={32} />
+            </div>
             <div>
               <h3 className="font-medium text-white">{taskConfig.name}</h3>
               <p className="text-sm text-gray-400">{task.fileName}</p>
@@ -65,8 +69,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onDownload }) => {
         </div>
 
         {task.status === 'processing' && (
-          <ProgressBar 
-            progress={task.progress} 
+          <ProgressBar
+            progress={task.progress}
             color={getStatusColor() as any}
           />
         )}

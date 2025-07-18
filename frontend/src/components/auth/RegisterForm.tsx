@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Card } from '../common/Card';
+import logo from "../../../logo.png"
 
 export const RegisterForm: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -51,13 +52,17 @@ export const RegisterForm: React.FC = () => {
       >
         <Card className="p-8">
           <div className="text-center mb-8">
-            <motion.div
+          <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto mb-4"
+              className="w-16 h-16 bg-black  flex items-center justify-center mx-auto mb-4 p-0 rounded-full"
             >
-              <span className="text-white font-bold text-2xl">D</span>
+              <img 
+                src={logo} 
+                alt="Docklet Logo" 
+                className="w-full h-full object-contain rounded-full"
+              />
             </motion.div>
             <h1 className="text-2xl font-bold text-white mb-2">Create Account</h1>
             <p className="text-gray-400">Join Docklet and start processing files</p>
