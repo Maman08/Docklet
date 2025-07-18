@@ -1,5 +1,6 @@
 const queueService = require('./queueService.js');
 const dockerService = require('./dockerService.js');
+const s3Service =require('./s3Service.js')
 const Task = require('../models/Task');
 const logger = require('../utils/logger');
 const { TASK_TYPES, DOCKER_IMAGES, PROCESSING_TIMEOUTS } = require('../utils/constants');
@@ -88,6 +89,7 @@ class TaskRunner {
 
 async processTask(task) {
     this.activeTasksCount++;
+    let outputFilePath = null;
     try {
         logger.info(`Processing task: ${task.id} of type ${task.type}`);
         await Task.findOneAndUpdate(
@@ -113,21 +115,29 @@ async processTask(task) {
             default:
                 throw new Error(`Unknown task type: ${task.type}`);
         }
-
+        outputFilePath=result.outputFile.path;
         const processingTime = Date.now() - startTime;
+        logger.info(`Uploading output file to S3: ${outputFilePath}`);
+        const s3Key = s3Service.generateTaskOutputKey(task.id, result.outputFile.filename);
+        const s3FileInfo = await s3Service.uploadOutputFile(outputFilePath, s3Key);
         const updateData = {
             status: 'completed',
             processingTime,
             completedAt: new Date(),
             progress: 100,
+            outputFile: {
+                filename: result.outputFile.filename,
+                originalName: result.outputFile.filename,
+                path: result.outputFile.path, //local path for reference
+                s3Key: s3FileInfo.s3Key,
+                size: s3FileInfo.size,
+                mimetype: s3FileInfo.mimetype
+            }
         };
 
-        if (result.outputFile) {
-            updateData.outputFile = result.outputFile;
-        }
-
         await Task.findOneAndUpdate({ id: task.id }, updateData);
-        logger.info(`Task ${task.id} completed successfully`);
+        logger.info(`Task ${task.id} completed successfully and uploaded to S3`, { s3Key: s3FileInfo.s3Key });
+        await s3Service.cleanupLocalFile(outputFilePath);
     } catch (err) {
         logger.error(`Error processing task ${task.id}:`, err);
         await Task.findOneAndUpdate(
@@ -139,6 +149,9 @@ async processTask(task) {
                 progress: 0,
             }
         );
+        if (outputFilePath) {
+            await s3Service.cleanupLocalFile(outputFilePath);
+        }
     } finally {
         this.activeTasksCount--;
     }
@@ -164,11 +177,18 @@ async processTask(task) {
 
         logger.info(`Volume mounts for image conversion: ${JSON.stringify(dockerConfig.volumes)}`);
         await dockerService.runContainer(dockerConfig, PROCESSING_TIMEOUTS['image-convert']);
+        const outputFilename = `${task.id}_converted.${parameters.format || 'jpg'}`;
+        const outputPath = `${process.cwd()}/outputs/${outputFilename}`;
+        try {
+            await fs.access(outputPath);
+        } catch (error) {
+            throw new Error(`Output file not found: ${outputPath}`);
+        }
 
         return {
             outputFile: {
-                filename: `${task.id}_converted.${parameters.format || 'jpg'}`,
-                path: `${process.cwd()}/outputs/${task.id}_converted.${parameters.format || 'jpg'}`
+                filename: outputFilename,
+                path: outputPath
             }
         };
     }
@@ -193,11 +213,17 @@ async processTask(task) {
 
         logger.info(`Volume mounts for video trim: ${JSON.stringify(dockerConfig.volumes)}`);
         await dockerService.runContainer(dockerConfig, PROCESSING_TIMEOUTS['video-trim']);
-
+        const outputFilename = `${task.id}_trimmed.mp4`;
+        const outputPath = `${process.cwd()}/outputs/${outputFilename}`;
+        try {
+            await fs.access(outputPath);
+        } catch (error) {
+            throw new Error(`Output file not found: ${outputPath}`);
+        }
         return {
             outputFile: {
-                filename: `${task.id}_trimmed.mp4`,
-                path: `${process.cwd()}/outputs/${task.id}_trimmed.mp4`
+                filename: outputFilename,
+                path:outputPath
             }
         };
     }
@@ -227,10 +253,18 @@ async processTask(task) {
         const outputExtension = parameters.outputFormat === 'json' ? '.json' : 
                                parameters.outputFormat === 'markdown' ? '.md' : '.txt';
 
+        const outputFilename = `${task.id}_extracted${outputExtension}`;
+        const outputPath = `${process.cwd()}/outputs/${outputFilename}`;
+        try {
+            await fs.access(outputPath);
+        } catch (error) {
+            throw new Error(`Output file not found: ${outputPath}`);
+        }                       
+
         return {
             outputFile: {
-                filename: `${task.id}_extracted${outputExtension}`,
-                path: `${process.cwd()}/outputs/${task.id}_extracted${outputExtension}`
+                filename:outputFilename,
+                path:outputPath
             }
         };
     }
@@ -256,11 +290,18 @@ async processTask(task) {
         };
 
         await dockerService.runContainer(dockerConfig, PROCESSING_TIMEOUTS['csv-analyze']);
+        const outputFilename = `${task.id}_analysis.json`;
+        const outputPath = `${process.cwd()}/outputs/${outputFilename}`;
+        try {
+            await fs.access(outputPath);
+        } catch (error) {
+            throw new Error(`Output file not found: ${outputPath}`);
+        }
 
         return {
             outputFile: {
-                filename: `${task.id}_analysis.json`,
-                path: `${process.cwd()}/outputs/${task.id}_analysis.json`
+                filename: outputFilename,
+                path:outputPath
             }
         };
     }
@@ -272,26 +313,4 @@ async processTask(task) {
 }
 
 module.exports = new TaskRunner();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

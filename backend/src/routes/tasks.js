@@ -7,6 +7,7 @@ const { upload, validateFileType, handleUploadError } = require('../middleware/u
 const { validateTask } = require('../middleware/validation');
 const queueService = require('../services/queueService');
 const fileService = require('../services/fileService');
+const s3Service = require('../services/s3Service');
 const { authenticateToken } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
 const { error } = require('console');
@@ -20,7 +21,7 @@ router.post('/submit',
     async (req, res) => {
         const startTime = Date.now();
         let taskId = null;
-        
+        let s3Key=null;
         try {
             logger.info('=== TASK SUBMISSION START ===', {
                 headers: req.headers,
@@ -71,11 +72,23 @@ router.post('/submit',
                 return res.status(400).json({ error: 'Invalid parameters format' });
             }
             
+            if (file) {
+                s3Key = s3Service.generateUserUploadKey(req.user.id, file.originalname);
+                try {
+                    await s3Service.uploadFile(file.path, s3Key, file.mimetype);
+                    logger.info('File uploaded to S3', { s3Key });
+                } catch (s3Error) {
+                    logger.error('S3 upload failed', { error: s3Error.message });
+                    return res.status(500).json({ error: 'File upload to cloud storage failed' });
+                }
+            }
+
             const taskData = {
                 id: taskId,
                 userId: req.user ? req.user.id : null,
                 type,
-                parameters: parsedParams
+                parameters: parsedParams,
+                status: 'pending'
             };
 
             if (file) {
@@ -83,6 +96,7 @@ router.post('/submit',
                     originalName: file.originalname,
                     filename: file.filename,
                     path: file.path,
+                    s3Key: s3Key,
                     size: file.size,
                     mimetype: file.mimetype
                 };
@@ -93,10 +107,7 @@ router.post('/submit',
                 taskId 
             });
 
-            const task = new Task(taskData);
-            
-            logger.info('Task object created, attempting to save...', { taskId });
-            
+            const task = new Task(taskData);            
             await task.save();
             
             logger.info('Task saved successfully to database', { taskId });
@@ -132,7 +143,14 @@ router.post('/submit',
                     hasFile: !!req.file,
                 }
             });
-            
+            if (s3Key) {
+                try {
+                    await s3Service.deleteFile(s3Key);
+                    logger.info('Cleaned up S3 file after error', { s3Key });
+                } catch (cleanupError) {
+                    logger.error('Failed to cleanup S3 file', { s3Key, error: cleanupError.message });
+                }
+            }
             if (req.file && req.file.path) {
                 try {
                     await fs.unlink(req.file.path);
@@ -187,6 +205,9 @@ router.get('/status/:taskId', async (req, res) => {
             completedAt: task.completedAt,
             processingTime: task.processingTime,
             error: task.error,
+            downloadUrl: task.status === 'completed' && task.outputFile?.s3Key 
+                ? `/api/tasks/download/${taskId}` 
+                : null
         };
 
         res.json(response);
@@ -213,31 +234,27 @@ router.get('/download/:taskId', async (req, res) => {
             return res.status(400).json({ error: 'No output file available' });
         }
 
-        await fileService.downloadFile(res, task.outputFile.path, task.outputFile.filename);
+        const presignedUrl = await s3Service.getPreSignedUrl(task.outputFile.s3Key, 3600);
+        
+        logger.info('Presigned URL generated for download', { 
+            taskId, 
+            userId: req.user?.id,
+            s3Key: task.outputFile.s3Key 
+        });
+
+        res.json({
+            downloadUrl: presignedUrl,
+            filename: task.outputFile.filename || task.outputFile.originalName,
+            size: task.outputFile.size,
+            expiresIn: 3600 
+        });
+
     } catch (err) {
         logger.error('Task download error:', err);
         res.status(500).json({ error: 'Failed to download file' });
     }
 });
 
-// router.get('/my-tasks', authenticateToken, async (req, res) => {
-//     try {
-//         const userId = req.user?.id;
-//         if (!userId) {
-//             return res.status(401).json({ error: 'Unauthorized' });
-//         }
-
-//         const tasks = await Task.find({ userId })
-//             .sort({ createdAt: -1 })
-//             .limit(50)
-//             .select('-inputFile.path -outputFile.path -codeContent');
-            
-//         res.json({ tasks });
-//     } catch (err) {
-//         logger.error('My tasks error:', err);
-//         res.status(500).json({ error: 'Failed to fetch tasks' });
-//     }
-// });
 
 router.get('/profile/:userId',authenticateToken,async(req,res)=>{
     try{
@@ -249,10 +266,20 @@ router.get('/profile/:userId',authenticateToken,async(req,res)=>{
         if(!user){
             return res.status(404).json({error:'User Not Found'});
         }
-        const task= await Task.find({userId})
+        const tasks = await Task.find({ userId })
+            .sort({ createdAt: -1 })
+            .limit(50)
+            .select('-inputFile.path -outputFile.path'); 
+
         return res.status(200).json({
-            user,tasks: task
-        })
+            user,
+            tasks: tasks.map(task => ({
+                ...task.toObject(),
+                downloadUrl: task.status === 'completed' && task.outputFile?.s3Key 
+                    ? `/api/tasks/download/${task.id}` 
+                    : null
+            }))
+        });
     }catch(err){
         return res.status(500).json({ error: 'Server error' });
     }
@@ -274,3 +301,24 @@ function getEstimatedTime(type, size) {
 }
 
 module.exports = router;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
