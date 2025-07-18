@@ -1,7 +1,7 @@
 const queueService = require('./queueService.js');
 const dockerService = require('./dockerService.js');
 const s3Service =require('./s3Service.js')
-const GitHubDeployService=require('./githubDeploySerice.js');
+const githubDeployService = require('./githubDeployService.js');
 const Task = require('../models/Task');
 const logger = require('../utils/logger');
 const { TASK_TYPES, DOCKER_IMAGES, PROCESSING_TIMEOUTS } = require('../utils/constants');
