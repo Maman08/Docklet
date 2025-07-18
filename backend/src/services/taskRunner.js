@@ -1,6 +1,7 @@
 const queueService = require('./queueService.js');
 const dockerService = require('./dockerService.js');
 const s3Service =require('./s3Service.js')
+const GitHubDeployService=require('./githubDeploySerice.js');
 const Task = require('../models/Task');
 const logger = require('../utils/logger');
 const { TASK_TYPES, DOCKER_IMAGES, PROCESSING_TIMEOUTS } = require('../utils/constants');
@@ -112,32 +113,62 @@ async processTask(task) {
             case 'csv-analyze':
                 result = await this.processCsvAnalysis(task);
                 break;
+            case 'github-deploy':
+                result=await this.processGithubDeploy(task);
+                break;    
             default:
                 throw new Error(`Unknown task type: ${task.type}`);
         }
-        outputFilePath=result.outputFile.path;
-        const processingTime = Date.now() - startTime;
-        logger.info(`Uploading output file to S3: ${outputFilePath}`);
-        const s3Key = s3Service.generateTaskOutputKey(task.id, result.outputFile.filename);
-        const s3FileInfo = await s3Service.uploadOutputFile(outputFilePath, s3Key);
-        const updateData = {
-            status: 'completed',
-            processingTime,
-            completedAt: new Date(),
-            progress: 100,
-            outputFile: {
-                filename: result.outputFile.filename,
-                originalName: result.outputFile.filename,
-                path: result.outputFile.path, //local path for reference
-                s3Key: s3FileInfo.s3Key,
-                size: s3FileInfo.size,
-                mimetype: s3FileInfo.mimetype
-            }
-        };
 
-        await Task.findOneAndUpdate({ id: task.id }, updateData);
-        logger.info(`Task ${task.id} completed successfully and uploaded to S3`, { s3Key: s3FileInfo.s3Key });
-        await s3Service.cleanupLocalFile(outputFilePath);
+        const processingTime = Date.now() - startTime;
+
+        if(task.type==='github-deploy'){
+            // For GitHub deploy, we don't upload to S3, we just store deployment info
+            const updateData={
+                status:'running',
+                processingTime,
+                createdAt:Date.now(),
+                progress:100,
+                deploymentInfo:{
+                    githubUrl:task.parameters.githubUrl,
+                    publicUrl: result.publicUrl,
+                    containerId: result.containerId,
+                    port: result.port,
+                    imageId: result.imageName,
+                    scheduledStopTime: result.scheduledStopTime,
+                    isRunning: true,
+                    buildLogs: result.buildLogs
+                }
+            };
+            await Task.findOneAndUpdate({id:task.id},updateData);
+            logger.info(`GitHub deploy task ${task.id} completed successfully`, { 
+                publicUrl: result.publicUrl,
+                scheduledStopTime: result.scheduledStopTime 
+            }); 
+        }else{
+            outputFilePath=result.outputFile.path;
+            
+            logger.info(`Uploading output file to S3: ${outputFilePath}`);
+            const s3Key = s3Service.generateTaskOutputKey(task.id, result.outputFile.filename);
+            const s3FileInfo = await s3Service.uploadOutputFile(outputFilePath, s3Key);
+            const updateData = {
+                status: 'completed',
+                processingTime,
+                completedAt: new Date(),
+                progress: 100,
+                outputFile: {
+                    filename: result.outputFile.filename,
+                    originalName: result.outputFile.filename,
+                    path: result.outputFile.path, //local path for reference
+                    s3Key: s3FileInfo.s3Key,
+                    size: s3FileInfo.size,
+                    mimetype: s3FileInfo.mimetype
+                }
+            };
+            await Task.findOneAndUpdate({ id: task.id }, updateData);
+            logger.info(`Task ${task.id} completed successfully and uploaded to S3`, { s3Key: s3FileInfo.s3Key });
+            await s3Service.cleanupLocalFile(outputFilePath);
+        }
     } catch (err) {
         logger.error(`Error processing task ${task.id}:`, err);
         await Task.findOneAndUpdate(
@@ -156,6 +187,29 @@ async processTask(task) {
         this.activeTasksCount--;
     }
 }
+
+    
+    async processGithubDeploy(task){
+        const {parameters}=task;
+        const {githubUrl}=parameters;
+        if (!githubDeployService.validateGitHubUrl(githubUrl)) {
+            throw new Error('Invalid GitHub URL format');
+        }
+        await Task.findOneAndUpdate({id:task.id},{progress:10});
+        logger.info(`Cloning repository for task ${task.id}`, { githubUrl });
+        const cloneDir = await githubDeployService.cloneRepository(githubUrl, task.id);
+        await Task.findOneAndUpdate({ id: task.id },{ progress: 30 });
+        logger.info(`Building Docker image for task ${task.id}`);
+        const { imageName, buildLogs } = await githubDeployService.buildDockerImage(cloneDir, task.id);
+        await Task.findOneAndUpdate({ id: task.id },{ progress: 70 });
+        const port = await githubDeployService.getAvailablePort();
+        logger.info(`Running container for task ${task.id}`, { port });
+        const { containerId, publicUrl, scheduledStopTime } = await githubDeployService.runContainer(imageName, task.id, port);
+        await Task.findOneAndUpdate({ id: task.id },{ progress: 100 });
+        return {publicUrl,containerId,port,imageName,scheduledStopTime,buildLogs};
+    }
+
+
     async processImageConversion(task) {
         const { inputFile, parameters } = task;
         
