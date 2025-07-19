@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Task, TaskSubmission, TaskType } from '../types';
 
-const API_BASE_URL = 'http://54.211.169.39:3000/api';
+const API_BASE_URL = 'https://54.211.169.39:3000/api';
 
 class TaskService {
   async submitTask(submission: TaskSubmission): Promise<{ taskId: string; estimatedTime?: number }> {
