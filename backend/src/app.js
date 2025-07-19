@@ -13,7 +13,10 @@ const taskRunner = require('./services/taskRunner.js');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: ['https://docklet.vercel.app'],
+    credentials: true
+}));
 app.use(helmet());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
