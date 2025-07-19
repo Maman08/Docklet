@@ -210,6 +210,90 @@ async processTask(task) {
 
     // Add this improved processGithubDeploy method to your TaskRunner class
 
+    // async processGithubDeploy(task) {
+    //     const { parameters } = task;
+    //     const { githubUrl } = parameters;
+    //     let cloneDir = null;
+    //     let port = null;
+    //     let imageName = null;
+        
+    //     try {
+    //         if (!githubDeployService.validateGitHubUrl(githubUrl)) {
+    //             throw new Error('Invalid GitHub URL format');
+    //         }
+            
+    //         await Task.findOneAndUpdate({ id: task.id }, { progress: 10 });
+    //         logger.info(`Cloning repository for task ${task.id}`, { githubUrl });
+            
+    //         cloneDir = await githubDeployService.cloneRepository(githubUrl, task.id);
+    //         await Task.findOneAndUpdate({ id: task.id }, { progress: 30 });
+            
+    //         logger.info(`Building Docker image for task ${task.id}`);
+    //         const buildResult = await githubDeployService.buildDockerImage(cloneDir, task.id);
+    //         imageName = buildResult.imageName;
+            
+    //         await Task.findOneAndUpdate({ id: task.id }, { progress: 70 });
+            
+    //         let retryCount = 0;
+    //         const maxRetries = 3;
+            
+    //         while (retryCount < maxRetries) {
+    //             try {
+    //                 port = await githubDeployService.getAvailablePort();
+    //                 logger.info(`Attempting to run container for task ${task.id}`, { port, attempt: retryCount + 1 });
+                    
+    //                 const runResult = await githubDeployService.runContainer(imageName, task.id, port);
+    //                 await Task.findOneAndUpdate({ id: task.id }, { progress: 100 });
+                    
+    //                 return {
+    //                     publicUrl: runResult.publicUrl,
+    //                     containerId: runResult.containerId,
+    //                     port: port,
+    //                     imageName: imageName,
+    //                     scheduledStopTime: runResult.scheduledStopTime,
+    //                     buildLogs: buildResult.buildLogs
+    //                 };
+                    
+    //             } catch (portError) {
+    //                 retryCount++;
+    //                 logger.warn(`Port allocation/container start failed, attempt ${retryCount}/${maxRetries}`, {
+    //                     taskId: task.id,
+    //                     port: port,
+    //                     error: portError.message
+    //                 });
+                    
+    //                 if (port) {
+    //                     githubDeployService.releasePort(port);
+    //                     port = null;
+    //                 }
+                    
+    //                 if (retryCount >= maxRetries) {
+    //                     throw new Error(`Failed to start container after ${maxRetries} attempts: ${portError.message}`);
+    //                 }
+                    
+    //                 await new Promise(resolve => setTimeout(resolve, 2000));
+    //             }
+    //         }
+            
+    //     } catch (error) {
+    //         if (port) {
+    //             githubDeployService.releasePort(port);
+    //         }
+            
+    //         if (imageName) {
+    //             try {
+    //                 await execAsync(`docker rmi ${imageName}`);
+    //                 logger.info(`Cleaned up Docker image ${imageName} after error`);
+    //             } catch (cleanupError) {
+    //                 logger.warn(`Failed to cleanup Docker image ${imageName}`, { error: cleanupError.message });
+    //             }
+    //         }
+            
+    //         throw error;
+    //     }
+    // }
+
+
     async processGithubDeploy(task) {
         const { parameters } = task;
         const { githubUrl } = parameters;
@@ -226,11 +310,25 @@ async processTask(task) {
             logger.info(`Cloning repository for task ${task.id}`, { githubUrl });
             
             cloneDir = await githubDeployService.cloneRepository(githubUrl, task.id);
+            logger.info(`Repository cloned successfully to: ${cloneDir}`);
             await Task.findOneAndUpdate({ id: task.id }, { progress: 30 });
             
             logger.info(`Building Docker image for task ${task.id}`);
             const buildResult = await githubDeployService.buildDockerImage(cloneDir, task.id);
             imageName = buildResult.imageName;
+            
+            logger.info(`Docker build completed`, { 
+                taskId: task.id, 
+                imageName, 
+                buildLogsLength: buildResult.buildLogs.length 
+            });
+            
+            try {
+                const { stdout: imageCheck } = await execAsync(`docker images ${imageName} --format "{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}"`);
+                logger.info(`Image verification after build:`, { imageCheck });
+            } catch (verifyError) {
+                logger.error(`Failed to verify image after build`, { error: verifyError.message });
+            }
             
             await Task.findOneAndUpdate({ id: task.id }, { progress: 70 });
             
@@ -240,10 +338,35 @@ async processTask(task) {
             while (retryCount < maxRetries) {
                 try {
                     port = await githubDeployService.getAvailablePort();
-                    logger.info(`Attempting to run container for task ${task.id}`, { port, attempt: retryCount + 1 });
+                    logger.info(`Attempting to run container for task ${task.id}`, { 
+                        port, 
+                        imageName,
+                        attempt: retryCount + 1 
+                    });
+                    
+                    try {
+                        const { stdout: finalCheck } = await execAsync(`docker image inspect ${imageName} --format "{{.Id}}"`);
+                        logger.info(`Final image check before container run:`, { 
+                            imageName, 
+                            imageId: finalCheck.trim() 
+                        });
+                    } catch (finalCheckError) {
+                        logger.error(`Final image check failed`, { 
+                            imageName, 
+                            error: finalCheckError.message 
+                        });
+                        throw new Error(`Image ${imageName} not found before container run: ${finalCheckError.message}`);
+                    }
                     
                     const runResult = await githubDeployService.runContainer(imageName, task.id, port);
                     await Task.findOneAndUpdate({ id: task.id }, { progress: 100 });
+                    
+                    logger.info(`GitHub deploy completed successfully`, {
+                        taskId: task.id,
+                        containerId: runResult.containerId,
+                        publicUrl: runResult.publicUrl,
+                        port: port
+                    });
                     
                     return {
                         publicUrl: runResult.publicUrl,
@@ -256,10 +379,12 @@ async processTask(task) {
                     
                 } catch (portError) {
                     retryCount++;
-                    logger.warn(`Port allocation/container start failed, attempt ${retryCount}/${maxRetries}`, {
+                    logger.warn(`Container start failed, attempt ${retryCount}/${maxRetries}`, {
                         taskId: task.id,
                         port: port,
-                        error: portError.message
+                        imageName: imageName,
+                        error: portError.message,
+                        errorStack: portError.stack
                     });
                     
                     if (port) {
@@ -276,14 +401,28 @@ async processTask(task) {
             }
             
         } catch (error) {
+            logger.error(`GitHub deploy failed for task ${task.id}`, {
+                error: error.message,
+                stack: error.stack,
+                githubUrl,
+                imageName,
+                port,
+                cloneDir
+            });
+            
             if (port) {
                 githubDeployService.releasePort(port);
             }
             
             if (imageName) {
                 try {
-                    await execAsync(`docker rmi ${imageName}`);
-                    logger.info(`Cleaned up Docker image ${imageName} after error`);
+                    const { stdout: imageExists } = await execAsync(`docker images ${imageName} -q`);
+                    if (imageExists.trim()) {
+                        await execAsync(`docker rmi ${imageName}`);
+                        logger.info(`Cleaned up Docker image ${imageName} after error`);
+                    } else {
+                        logger.info(`Image ${imageName} not found, no cleanup needed`);
+                    }
                 } catch (cleanupError) {
                     logger.warn(`Failed to cleanup Docker image ${imageName}`, { error: cleanupError.message });
                 }
@@ -292,7 +431,6 @@ async processTask(task) {
             throw error;
         }
     }
-
 
     async processImageConversion(task) {
         const { inputFile, parameters } = task;
@@ -451,46 +589,6 @@ async processTask(task) {
 }
 
 module.exports = new TaskRunner();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
