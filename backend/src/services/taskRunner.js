@@ -188,24 +188,109 @@ async processTask(task) {
 }
 
     
-    async processGithubDeploy(task){
-        const {parameters}=task;
-        const {githubUrl}=parameters;
-        if (!githubDeployService.validateGitHubUrl(githubUrl)) {
-            throw new Error('Invalid GitHub URL format');
+    // async processGithubDeploy(task){
+    //     const {parameters}=task;
+    //     const {githubUrl}=parameters;
+    //     if (!githubDeployService.validateGitHubUrl(githubUrl)) {
+    //         throw new Error('Invalid GitHub URL format');
+    //     }
+    //     await Task.findOneAndUpdate({id:task.id},{progress:10});
+    //     logger.info(`Cloning repository for task ${task.id}`, { githubUrl });
+    //     const cloneDir = await githubDeployService.cloneRepository(githubUrl, task.id);
+    //     await Task.findOneAndUpdate({ id: task.id },{ progress: 30 });
+    //     logger.info(`Building Docker image for task ${task.id}`);
+    //     const { imageName, buildLogs } = await githubDeployService.buildDockerImage(cloneDir, task.id);
+    //     await Task.findOneAndUpdate({ id: task.id },{ progress: 70 });
+    //     const port = await githubDeployService.getAvailablePort();
+    //     logger.info(`Running container for task ${task.id}`, { port });
+    //     const { containerId, publicUrl, scheduledStopTime } = await githubDeployService.runContainer(imageName, task.id, port);
+    //     await Task.findOneAndUpdate({ id: task.id },{ progress: 100 });
+    //     return {publicUrl,containerId,port,imageName,scheduledStopTime,buildLogs};
+    // }
+
+    // Add this improved processGithubDeploy method to your TaskRunner class
+
+    async processGithubDeploy(task) {
+        const { parameters } = task;
+        const { githubUrl } = parameters;
+        let cloneDir = null;
+        let port = null;
+        let imageName = null;
+        
+        try {
+            if (!githubDeployService.validateGitHubUrl(githubUrl)) {
+                throw new Error('Invalid GitHub URL format');
+            }
+            
+            await Task.findOneAndUpdate({ id: task.id }, { progress: 10 });
+            logger.info(`Cloning repository for task ${task.id}`, { githubUrl });
+            
+            cloneDir = await githubDeployService.cloneRepository(githubUrl, task.id);
+            await Task.findOneAndUpdate({ id: task.id }, { progress: 30 });
+            
+            logger.info(`Building Docker image for task ${task.id}`);
+            const buildResult = await githubDeployService.buildDockerImage(cloneDir, task.id);
+            imageName = buildResult.imageName;
+            
+            await Task.findOneAndUpdate({ id: task.id }, { progress: 70 });
+            
+            let retryCount = 0;
+            const maxRetries = 3;
+            
+            while (retryCount < maxRetries) {
+                try {
+                    port = await githubDeployService.getAvailablePort();
+                    logger.info(`Attempting to run container for task ${task.id}`, { port, attempt: retryCount + 1 });
+                    
+                    const runResult = await githubDeployService.runContainer(imageName, task.id, port);
+                    await Task.findOneAndUpdate({ id: task.id }, { progress: 100 });
+                    
+                    return {
+                        publicUrl: runResult.publicUrl,
+                        containerId: runResult.containerId,
+                        port: port,
+                        imageName: imageName,
+                        scheduledStopTime: runResult.scheduledStopTime,
+                        buildLogs: buildResult.buildLogs
+                    };
+                    
+                } catch (portError) {
+                    retryCount++;
+                    logger.warn(`Port allocation/container start failed, attempt ${retryCount}/${maxRetries}`, {
+                        taskId: task.id,
+                        port: port,
+                        error: portError.message
+                    });
+                    
+                    if (port) {
+                        githubDeployService.releasePort(port);
+                        port = null;
+                    }
+                    
+                    if (retryCount >= maxRetries) {
+                        throw new Error(`Failed to start container after ${maxRetries} attempts: ${portError.message}`);
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+            
+        } catch (error) {
+            if (port) {
+                githubDeployService.releasePort(port);
+            }
+            
+            if (imageName) {
+                try {
+                    await execAsync(`docker rmi ${imageName}`);
+                    logger.info(`Cleaned up Docker image ${imageName} after error`);
+                } catch (cleanupError) {
+                    logger.warn(`Failed to cleanup Docker image ${imageName}`, { error: cleanupError.message });
+                }
+            }
+            
+            throw error;
         }
-        await Task.findOneAndUpdate({id:task.id},{progress:10});
-        logger.info(`Cloning repository for task ${task.id}`, { githubUrl });
-        const cloneDir = await githubDeployService.cloneRepository(githubUrl, task.id);
-        await Task.findOneAndUpdate({ id: task.id },{ progress: 30 });
-        logger.info(`Building Docker image for task ${task.id}`);
-        const { imageName, buildLogs } = await githubDeployService.buildDockerImage(cloneDir, task.id);
-        await Task.findOneAndUpdate({ id: task.id },{ progress: 70 });
-        const port = await githubDeployService.getAvailablePort();
-        logger.info(`Running container for task ${task.id}`, { port });
-        const { containerId, publicUrl, scheduledStopTime } = await githubDeployService.runContainer(imageName, task.id, port);
-        await Task.findOneAndUpdate({ id: task.id },{ progress: 100 });
-        return {publicUrl,containerId,port,imageName,scheduledStopTime,buildLogs};
     }
 
 
@@ -366,4 +451,48 @@ async processTask(task) {
 }
 
 module.exports = new TaskRunner();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

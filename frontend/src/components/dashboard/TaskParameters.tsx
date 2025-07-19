@@ -109,53 +109,21 @@ export const TaskParametersComponent: React.FC<TaskParametersProps> = ({
           </div>
         );
 
-      case 'deploy-app':
+    
+      case 'github-deploy':
         return (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Application Type
-              </label>
-              <select
-                value={parameters.appType || 'nodejs'}
-                onChange={(e) => updateParameter('appType', e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
-              >
-                {Object.entries(APP_TYPES).map(([key, app]) => (
-                  <option key={key} value={key}>{app.name}</option>
-                ))}
-              </select>
-            </div>
             <Input
-              type="number"
-              label="Expiration Hours"
-              value={parameters.expirationHours || 24}
-              onChange={(e) => updateParameter('expirationHours', parseInt(e.target.value))}
-              placeholder="24"
+              type="url"
+              label="GitHub Repository URL"
+              value={parameters.githubUrl || ''}
+              onChange={(e) => updateParameter('githubUrl', e.target.value)}
+              placeholder="https://github.com/username/repository"
+              required
             />
-            <Input
-              type="number"
-              label="Port"
-              value={parameters.port || 3000}
-              onChange={(e) => updateParameter('port', parseInt(e.target.value))}
-              placeholder="3000"
-            />
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Environment
-              </label>
-              <select
-                value={parameters.environment || 'production'}
-                onChange={(e) => updateParameter('environment', e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="development">Development</option>
-                <option value="production">Production</option>
-              </select>
-            </div>
           </div>
         );
-
+        
       default:
         return null;
     }
@@ -176,3 +144,4 @@ export const TaskParametersComponent: React.FC<TaskParametersProps> = ({
     </div>
   );
 };
+

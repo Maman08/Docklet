@@ -76,27 +76,44 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleTaskSubmit = async () => {
-    if (!selectedType || !selectedFile) {
-      toast.error('Please select a task type and file');
+    if (!selectedType) {
+      toast.error('Please select a task type');
       return;
     }
-
+  
+    if (selectedType === 'github-deploy') {
+      const githubUrl = parameters.githubUrl?.trim();
+      if (!githubUrl) {
+        toast.error('Please enter a GitHub repository URL');
+        return;
+      }
+  
+      const githubUrlPattern = /^https:\/\/github\.com\/[\w\-\.]+\/[\w\-\.]+(?:\.git)?$/;
+      if (!githubUrlPattern.test(githubUrl)) {
+        toast.error('Please enter a valid GitHub repository URL');
+        return;
+      }
+    } else {
+      if (!selectedFile) {
+        toast.error('Please upload a file');
+        return;
+      }
+    }
+  
     setSubmitting(true);
     try {
       const result = await taskService.submitTask({
         type: selectedType,
-        file: selectedFile,
+        file: selectedType === 'github-deploy' ? undefined : selectedFile!,
         parameters
       });
-      
+  
       toast.success(`Task submitted successfully! ${result.estimatedTime ? `Estimated time: ${result.estimatedTime}s` : ''}`);
       setSelectedType(null);
       setSelectedFile(null);
       setParameters({});
-      
-      // Poll for task updates
+  
       pollTaskStatus(result.taskId);
-      
     } catch (error: any) {
       console.error('Task submission failed:', error);
       const errorMessage = error.response?.data?.error || 'Failed to submit task';
@@ -105,6 +122,7 @@ export const Dashboard: React.FC = () => {
       setSubmitting(false);
     }
   };
+  
 
   const handleCodeExecute = async () => {
     if (!code.trim()) {
@@ -233,7 +251,7 @@ export const Dashboard: React.FC = () => {
           {/* Welcome Section */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold text-white">
-              Welcome to <span className="bg-gradient-to-r from-blue-400 to-black-400 bg-clip-text text-transparent">Docklet</span>
+              Welcome to <span className="bg-gradient-to-r from-blue-400 to-blue-100 bg-clip-text text-transparent">Docklet</span>
             </h1>
             <p className="text-gray-400 text-lg">Process files with Docker power</p>
           </div>
@@ -304,7 +322,12 @@ export const Dashboard: React.FC = () => {
                     
                     <Button
                       onClick={handleTaskSubmit}
-                      disabled={!selectedType || !selectedFile}
+                      disabled={
+                        !selectedType || 
+                        (selectedType !== 'github-deploy' && !selectedFile) || 
+                        (selectedType === 'github-deploy' && !parameters.githubUrl)
+                      }
+                      
                       loading={submitting}
                       className="w-full"
                     >
@@ -389,3 +412,4 @@ export const Dashboard: React.FC = () => {
     </div>
   );
 };
+

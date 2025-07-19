@@ -17,6 +17,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onFileSelect,
   selectedFile
 }) => {
+  if (taskType === 'github-deploy') {
+    return null;
+  }
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

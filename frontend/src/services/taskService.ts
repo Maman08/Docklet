@@ -6,15 +6,16 @@ const API_BASE_URL = 'https://api.docklet.site/api';
 class TaskService {
   async submitTask(submission: TaskSubmission): Promise<{ taskId: string; estimatedTime?: number }> {
     const formData = new FormData();
-    formData.append('file', submission.file);
+    if (submission.type !== 'github-deploy' && submission.file) {
+      formData.append('file', submission.file);
+    }
     formData.append('type', submission.type);
     formData.append('parameters', JSON.stringify(submission.parameters));
 
-    // Debug logging
     console.log('Submitting task:', {
       type: submission.type,
-      fileName: submission.file.name,
-      fileSize: submission.file.size,
+      fileName: submission.file?.name,
+      fileSize: submission.file?.size,
       parameters: submission.parameters,
       parametersString: JSON.stringify(submission.parameters)
     });
@@ -25,7 +26,6 @@ class TaskService {
     try {
       const response = await axios.post(`${API_BASE_URL}/tasks/submit`, formData, {
         headers: {
-          // Remove explicit Content-Type - let browser set it with boundary
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         // Add timeout to prevent hanging
@@ -52,6 +52,27 @@ class TaskService {
     });
     return response.data;
   }
+
+  async stopDeployment(taskId: string): Promise<void> {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(`${API_BASE_URL}/tasks/stop/${taskId}`, {}, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.data;
+  }
+
+  async getRunningDeployments(): Promise<any[]> {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/tasks/deployments/running`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.data.deployments;
+  }
+
 
   async downloadFile(taskId: string): Promise<void> {
     // First get the presigned URL from your backend

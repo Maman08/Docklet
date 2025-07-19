@@ -1,6 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, ExternalLink, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import {
+  Download,
+  ExternalLink,
+  Clock,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+} from 'lucide-react';
 import { Task } from '../../types';
 import { TASK_TYPES } from '../../utils/constants';
 import { formatFileSize } from '../../utils/validation';
@@ -8,6 +15,7 @@ import { Card } from '../common/Card';
 import { ProgressBar } from '../common/ProgressBar';
 import { Button } from '../common/Button';
 import { iconMap } from '../../utils/iconMapping';
+import { taskService } from '../../services/taskService';
 
 interface TaskCardProps {
   task: Task;
@@ -17,6 +25,7 @@ interface TaskCardProps {
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onDownload }) => {
   const taskConfig = TASK_TYPES[task.type];
   const IconComponent = iconMap[taskConfig.icon];
+  const [isStoppingDeployment, setIsStoppingDeployment] = useState(false);
 
   const getStatusIcon = () => {
     switch (task.status) {
@@ -44,6 +53,60 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onDownload }) => {
     }
   };
 
+  const handleStopDeployment = async () => {
+    if (!task.id || task.type !== 'github-deploy') return;
+
+    setIsStoppingDeployment(true);
+    try {
+      await taskService.stopDeployment(task.id);
+      // You might want to trigger a refresh of the task list here
+    } catch (error) {
+      console.error('Failed to stop deployment:', error);
+    } finally {
+      setIsStoppingDeployment(false);
+    }
+  };
+
+  const renderGithubDeployInfo = () => {
+    if (task.type !== 'github-deploy') return null;
+
+    return (
+      <div className="mt-4 space-y-2">
+        {task.status === 'running' && task.publicUrl && (
+          <div className="flex items-center space-x-2">
+            <ExternalLink className="h-4 w-4 text-green-400" />
+            <a
+              href={task.publicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              Open Application
+            </a>
+          </div>
+        )}
+
+        {task.status === 'running' && task.timeRemaining && (
+          <div className="text-sm text-gray-400">
+            Time remaining: {Math.floor(task.timeRemaining / (1000 * 60))} minutes
+          </div>
+        )}
+
+        {task.status === 'running' && (
+          <Button
+            onClick={handleStopDeployment}
+            disabled={isStoppingDeployment}
+            variant="destructive"
+            size="sm"
+            className="mt-2"
+          >
+            {isStoppingDeployment ? 'Stopping...' : 'Stop Deployment'}
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -69,10 +132,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onDownload }) => {
         </div>
 
         {task.status === 'processing' && (
-          <ProgressBar
-            progress={task.progress}
-            color={getStatusColor() as any}
-          />
+          <ProgressBar progress={task.progress} color={getStatusColor() as any} />
         )}
 
         {task.error && (
@@ -114,6 +174,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onDownload }) => {
             )}
           </div>
         )}
+
+        {renderGithubDeployInfo()}
       </Card>
     </motion.div>
   );

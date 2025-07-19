@@ -48,6 +48,13 @@ export const TASK_TYPES: { [key in TaskType]: {
     icon: 'Rocket',
     maxSize: 100 * 1024 * 1024, // 100MB
     supportedFormats: ['zip', 'tar', 'gz']
+  },
+  'github-deploy': {
+    name: 'GitHub Deploy',
+    description: 'Deploy applications from GitHub repositories',
+    icon: 'Github', 
+    maxSize: 0, 
+    supportedFormats: [] 
   }
 };
 

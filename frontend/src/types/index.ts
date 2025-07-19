@@ -21,17 +21,16 @@ export interface RegisterCredentials {
   password: string;
 }
 
-export type TaskType =
-  | 'image-convert'
-  | 'video-trim'
-  | 'pdf-extract'
-  | 'csv-analyze'
-  | 'code-execute'
-  | 'deploy-app';
+export type TaskType = 'image-convert' | 'video-trim' | 'pdf-extract' | 'csv-analyze' | 'github-deploy';
 
 export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
-
+export interface GitHubDeployParameters {
+  githubUrl: string;
+}
 export interface TaskParameters {
+
+  githubUrl?: string;
+  
   // Image conversion parameters
   format?: string;       
   quality?: number;
@@ -66,11 +65,7 @@ export interface TaskParameters {
   timeout?: number;
   memoryLimit?: string;
   
-  // Deployment parameters
-  appType?: string;
-  expirationHours?: number;
-  port?: number;
-  environment?: string;
+ 
 }
 
 export interface Task {
@@ -86,7 +81,11 @@ export interface Task {
   completedAt?: string;
   processingTime?: number;  
   downloadUrl?: string;
+  publicUrl?: string; 
+  deploymentInfo?: DeploymentInfo;
+  timeRemaining?: number;
   deploymentUrl?: string;
+  scheduledStopTime?: string;
   error?: string;
   output?: string;           
   
@@ -106,11 +105,13 @@ export interface Task {
     size: number;
     mimetype: string;
   };
+  isRunning?: boolean;
+  stoppedAt?: string;
 }
 
 export interface TaskSubmission {
   type: TaskType;
-  file: File;
+  file?: File;
   parameters: TaskParameters;
 }
 
@@ -125,6 +126,14 @@ export interface DeploymentInfo {
   url: string;
   status: 'active' | 'expired' | 'error';
   expiresAt: string;
+  githubUrl: string;
+  publicUrl: string;
+  containerId: string;
+  port: number;
+  imageId: string;
+  scheduledStopTime: string;
+  isRunning: boolean;
+  buildLogs?: string;
   resourceUsage: {
     cpu: number;
     memory: number;

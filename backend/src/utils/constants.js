@@ -2,14 +2,17 @@ const TASK_TYPES = {
   IMAGE_CONVERT: 'image-convert',
   VIDEO_TRIM: 'video-trim',
   PDF_EXTRACT: 'pdf-extract',
-  CSV_ANALYZE: 'csv-analyze'
+  CSV_ANALYZE: 'csv-analyze',
+  GITHUB_DEPLOY: 'github-deploy'
 };
 
 const TASK_STATUS = {
   PENDING: 'pending',
   PROCESSING: 'processing',
   COMPLETED: 'completed',
-  FAILED: 'failed'
+  FAILED: 'failed',
+  RUNNING: 'running',     
+  STOPPED: 'stopped'    
 };
 
 const SUPPORTED_IMAGE_FORMATS = {
@@ -39,7 +42,8 @@ const PROCESSING_TIMEOUTS = {
   'image-convert': 5 * 60 * 1000, // 5 minutes
   'video-trim': 30 * 60 * 1000, // 30 minutes
   'pdf-extract': 5 * 60 * 1000, // 5 minutes
-  'csv-analyze': 10 * 60 * 1000 // 10 minutes
+  'csv-analyze': 10 * 60 * 1000, // 10 minutes
+  'github-deploy': 600000
 };
 
 
@@ -62,6 +66,17 @@ const FILE_SIZE_LIMITS = {
 };
 
 
+const DEPLOYMENT_CONFIG = {
+  MAX_CONCURRENT_DEPLOYMENTS: 10,
+  DEPLOYMENT_DURATION: 60 * 60 * 1000, // 1 hour in milliseconds
+  PORT_RANGE: {
+      MIN: 3000,
+      MAX: 4000
+  },
+  CLEANUP_INTERVAL: 60 * 1000, // Check every minute
+  MAX_BUILD_TIME: 10 * 60 * 1000, // 10 minutes max build time
+  GITHUB_URL_REGEX: /^https:\/\/github\.com\/[\w\-\.]+\/[\w\-\.]+(?:\.git)?$/
+};
 
 
 const QUEUE_PRIORITIES = {
@@ -81,5 +96,6 @@ module.exports = {
   ERROR_MESSAGES,
   FILE_SIZE_LIMITS,
   PROCESSING_TIMEOUTS,
-  QUEUE_PRIORITIES
+  QUEUE_PRIORITIES,
+  DEPLOYMENT_CONFIG
 };
