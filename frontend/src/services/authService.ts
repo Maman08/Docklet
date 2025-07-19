@@ -2,7 +2,7 @@ import axios from 'axios';
 import { User, AuthResponse, LoginCredentials, RegisterCredentials } from '../types';
 
 const API_BASE_URL = 'https://api.docklet.site/api';
-// const API_BASE_URL = 'http://localhost:3000/api';
+//  const API_BASE_URL = 'http://localhost:3000/api';
 
 class AuthService {
   private token: string | null = null;
