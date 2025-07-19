@@ -6,7 +6,7 @@ const TaskSchema = new mongoose.Schema({
     type: { type: String, required: true },
     status: { 
         type: String, 
-        enum: ['pending', 'processing', 'completed', 'failed'], 
+        enum:['pending', 'processing', 'completed', 'failed', 'running', 'stopped'], 
         default: 'pending' 
     },
     progress: { type: Number, default: 0 },
@@ -25,6 +25,16 @@ const TaskSchema = new mongoose.Schema({
         s3Key: String,
         size:Number,
         mimetype:String
+    },
+    deploymentInfo:{
+        githubUrl:String,
+        publicUrl:String,
+        containerId:String,
+        port:Number,
+        isRunning:Boolean,
+        buildLogs:String,
+        imageId:String,
+        scheduledStopTime:Date
     },
     
     parameters: { type: mongoose.Schema.Types.Mixed, default: {} },
