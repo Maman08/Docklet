@@ -31,12 +31,12 @@ An application for asynchronous file processing and containerized GitHub deploym
 
 ### File Processing Pipeline
 ```
-Upload → Validation → S3 Storage → Queue → Docker Processing → Result Upload → Cleanup
+Upload → Validation → S3 Storage → Queue → Container Spawn → Docker Processing → Result Upload → Container Cleanup
 ```
 
 ### GitHub Deployment Flow
 ```
-URL Validation → Git Clone → Docker Build → Port Allocation → Container Run → Health Check
+URL Validation → Git Clone → Docker Build → Port Allocation → Container Run → Health Check → Container Cleanup
 ```
 
 ## Technical Implementation
