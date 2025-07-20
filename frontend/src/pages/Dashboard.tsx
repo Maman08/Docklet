@@ -261,8 +261,8 @@ export const Dashboard: React.FC = () => {
             <div className="bg-gray-800/50 rounded-lg p-1 flex space-x-1">
               {[
                 { id: 'upload', label: 'File Processing' },
+                { id: 'tasks', label: 'My Tasks' },
                 { id: 'code', label: 'Code Execution' },
-                { id: 'tasks', label: 'My Tasks' }
               ].map((tab) => (
                 <button
                   key={tab.id}

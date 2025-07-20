@@ -29,7 +29,10 @@ export const TaskTypeSelector: React.FC<TaskTypeSelectorProps> = ({
             >
               <Card
                 hover
-                onClick={() => onTypeSelect(type as TaskType)}
+                onClick={() => {
+                  onTypeSelect(type as TaskType);
+                  window.scrollBy({ top: window.innerHeight * 0.4, behavior: 'smooth' });
+                }}
                 className={`cursor-pointer transition-all duration-300 ${
                   selectedType === type
                     ? 'border-blue-500 bg-blue-500/10'

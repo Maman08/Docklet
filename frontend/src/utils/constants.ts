@@ -16,46 +16,40 @@ export const TASK_TYPES: { [key in TaskType]: {
   },
   'pdf-extract': {
     name: 'PDF Text Extraction',
-    description: 'Extract text content from PDF files',
+    description: 'Extract the text content from PDF files',
     icon: 'FileText',
     maxSize: 100 * 1024 * 1024, // 100MB
     supportedFormats: ['pdf']
   },
   'github-deploy': {
     name: 'GitHub Deploy',
-    description: 'Deploy applications from GitHub repositories',
+    description: 'One click deploy using GitHub repositories',
     icon: 'Github', 
     maxSize: 0, 
     supportedFormats: [] 
   },
   'video-trim': {
-    name: 'Video Trimming',
-    description: 'Trim videos with precision timing',
+    name: 'Video Processing',
+    description: 'Process videos with operations like timing , Splitting',
     icon: 'Video',
     maxSize: 500 * 1024 * 1024, // 500MB
     supportedFormats: ['mp4', 'avi', 'mov', 'mkv', 'wmv']
   },
   'csv-analyze': {
     name: 'CSV Analysis',
-    description: 'Analyze CSV data and generate insights',
+    description: 'Analyze CSV data and generate insights (COMING)',
     icon: 'BarChart3',
     maxSize: 50 * 1024 * 1024, // 50MB
     supportedFormats: ['csv']
   },
   'code-execute': {
     name: 'Code Execution',
-    description: 'Execute code in multiple languages',
+    description: 'Execute code in multiple languages in Docker environment (COMING)',
     icon: 'Code',
     maxSize: 10 * 1024 * 1024, // 10MB
     supportedFormats: ['py', 'js', 'java', 'cpp', 'c', 'go', 'rs']
   },
-  'deploy-app': {
-    name: 'App Deployment',
-    description: 'Deploy applications',
-    icon: 'Rocket',
-    maxSize: 100 * 1024 * 1024, // 100MB
-    supportedFormats: ['zip', 'tar', 'gz']
-  },
+ 
   
 };
 
